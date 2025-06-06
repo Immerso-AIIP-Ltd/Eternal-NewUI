@@ -35,7 +35,7 @@ const SignupPage = () => {
       return;
     }
     setError('');
-    navigate('/journey');
+    navigate('/onboard2');
   };
 
   return (
