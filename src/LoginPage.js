@@ -37,7 +37,7 @@ const LoginPage = () => {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      navigate('/onhome'); // Redirect after successful login
+      navigate('/home'); // Redirect after successful login
     } catch (err) {
       console.error('Login error:', err.message);
       
@@ -49,7 +49,7 @@ const LoginPage = () => {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
-      navigate('/onhome');
+      navigate('/home');
     } catch (err) {
       console.error('Google login error:', err.message);
       
@@ -63,7 +63,7 @@ const LoginPage = () => {
     // Add your login logic here (optional)
 
     // Navigate to /profile
-    navigate('/onhome');
+    navigate('/home');
   };
 
   return (
