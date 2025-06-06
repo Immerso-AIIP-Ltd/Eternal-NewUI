@@ -1,0 +1,38 @@
+/* src/App.css */
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+.vh-100 {
+  height: 100vh;
+}
+
+.bg-dark {
+  background-color: #000 !important;
+}
+
+.text-white {
+  color: white !important;
+}
+
+.form-select {
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 10px;
+  font-size: 1rem;
+}
+
+.badge {
+  padding: 10px 20px;
+  font-size: 1.2rem;
+  border-radius: 5px;
+}
+
+.bg-success {
+  background-color: #28a745 !important;
+}
+
+.bg-danger {
+  background-color: #dc3545 !important;
+}
