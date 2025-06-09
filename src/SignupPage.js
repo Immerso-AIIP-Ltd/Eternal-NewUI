@@ -1,18 +1,29 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
-import circle from './circle.png'; 
-import { useNavigate } from 'react-router-dom';
+import circle from './circle.png';
 import Google from './Google.png';
+import { useNavigate } from 'react-router-dom';
+import {
+  createUserWithEmailAndPassword,
+  updateProfile,
+  signInWithPopup,
+  GoogleAuthProvider,
+} from 'firebase/auth';
+import { auth } from './firebase/config';
 
 const SignupPage = () => {
   const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
+    fullName: '',
     email: '',
     password: '',
     confirmPassword: '',
     showPassword: false,
   });
+
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({
@@ -30,12 +41,56 @@ const SignupPage = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+
+    // Reset error
+    setError('');
+
+    // Email validation regex
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('Please enter a valid email address');
       return;
     }
-    setError('');
-    navigate('/onboard2');
+
+    // Password length check
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+
+    // Confirm password check
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    // Firebase sign-up
+    createUserWithEmailAndPassword(auth, formData.email, formData.password)
+      .then((userCredential) => {
+        const user = userCredential.user;
+
+        // Update display name
+        return updateProfile(user, {
+          displayName: formData.fullName,
+        });
+      })
+      .then(() => {
+        setSuccess('Account created successfully!');
+        setTimeout(() => navigate('/home'), 1500);
+      })
+      .catch((err) => {
+        setError(err.message);
+      });
+  };
+
+  const handleGoogleSignIn = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+      navigate('/home');
+    } catch (err) {
+      console.error('Google login error:', err.message);
+    }
   };
 
   return (
@@ -43,6 +98,7 @@ const SignupPage = () => {
       className="min-vh-100 d-flex align-items-center position-relative overflow-hidden"
       style={{ backgroundColor: '#000' }}
     >
+      {/* Background Star Effects */}
       <div className="position-absolute w-100 h-100" style={{ zIndex: 0 }}>
         {[...Array(30)].map((_, i) => (
           <div
@@ -60,7 +116,6 @@ const SignupPage = () => {
           />
         ))}
       </div>
-
       {[{ t: '8%', l: '5%' }, { t: '15%', r: '10%' }, { b: '20%', l: '8%' }, { b: '15%', r: '12%' }, { t: '40%', r: '5%' }, { b: '60%', l: '3%' }].map((pos, idx) => (
         <div
           key={idx}
@@ -79,8 +134,10 @@ const SignupPage = () => {
         </div>
       ))}
 
+      {/* Main Content */}
       <div className="container-fluid" style={{ zIndex: 1 }}>
         <div className="row min-vh-100 align-items-center">
+          {/* Left Side - Zodiac Wheel */}
           <div className="col-12 col-lg-7 d-flex align-items-center justify-content-center p-4">
             <div className="text-center position-relative">
               <div
@@ -98,7 +155,6 @@ const SignupPage = () => {
                   className="img-fluid w-100 h-100 object-fit-cover"
                 />
               </div>
-
               <div
                 className="position-absolute top-50 start-50 translate-middle text-white text-center"
                 style={{ width: '80%' }}
@@ -133,16 +189,28 @@ const SignupPage = () => {
             </div>
           </div>
 
+          {/* Right Side - Sign Up Form */}
           <div className="col-12 col-lg-5 p-4">
             <div className="mx-auto" style={{ maxWidth: '400px' }}>
               <div className="text-center mb-4">
                 <h2 className="text-white h3 mb-2">Welcome Back</h2>
                 <p className="text-white-50 h5 fw-normal">Sign Up Now</p>
               </div>
-
               <form onSubmit={handleSubmit}>
                 <div className="mb-4">
-                  <label className="form-label text-white-50 small">Email address/Phone Number</label>
+                  <label className="form-label text-white-50 small">Full Name</label>
+                  <input
+                    type="text"
+                    className="form-control bg-dark border-secondary text-white"
+                    placeholder="John Doe"
+                    value={formData.fullName}
+                    onChange={(e) => handleInputChange('fullName', e.target.value)}
+                    style={{ backgroundColor: '#2a2a2a', borderColor: '#404040' }}
+                    required
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="form-label text-white-50 small">Email address</label>
                   <input
                     type="email"
                     className="form-control bg-dark border-secondary text-white"
@@ -150,9 +218,9 @@ const SignupPage = () => {
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
                     style={{ backgroundColor: '#2a2a2a', borderColor: '#404040' }}
+                    required
                   />
                 </div>
-
                 <div className="mb-4">
                   <label className="form-label text-white-50 small">Password</label>
                   <div className="position-relative">
@@ -163,6 +231,7 @@ const SignupPage = () => {
                       value={formData.password}
                       onChange={(e) => handleInputChange('password', e.target.value)}
                       style={{ backgroundColor: '#2a2a2a', borderColor: '#404040' }}
+                      required
                     />
                     <button
                       type="button"
@@ -174,7 +243,6 @@ const SignupPage = () => {
                     </button>
                   </div>
                 </div>
-
                 <div className="mb-4">
                   <label className="form-label text-white-50 small">Rewrite Password</label>
                   <div className="position-relative">
@@ -197,12 +265,9 @@ const SignupPage = () => {
                     </button>
                   </div>
                   {error && (
-                    <div className="text-danger small mt-1">
-                      {error}
-                    </div>
+                    <div className="text-danger small mt-1">{error}</div>
                   )}
                 </div>
-
                 <button
                   type="submit"
                   className="btn w-100 py-3 fw-semibold mb-4"
@@ -216,7 +281,6 @@ const SignupPage = () => {
                   Sign UP
                 </button>
               </form>
-
               <div className="position-relative text-center my-4">
                 <hr className="text-white-50" />
                 <span
@@ -226,10 +290,12 @@ const SignupPage = () => {
                   Or
                 </span>
               </div>
-
               <div className="row g-2 mb-4">
                 <div className="col-6">
-                  <button className="btn w-100 py-3 d-flex align-items-center justify-content-center bg-dark border-secondary text-white rounded-3">
+                  <button
+                    className="btn w-100 py-3 d-flex align-items-center justify-content-center bg-dark border-secondary text-white rounded-3"
+                    onClick={handleGoogleSignIn}
+                  >
                     <img src={Google} alt="Google Logo" style={{ width: '30px', height: '30px' }} />
                     <span className="ms-2 small">Google</span>
                   </button>
@@ -240,38 +306,36 @@ const SignupPage = () => {
                   </button>
                 </div>
               </div>
-
               <div className="text-center">
                 <span className="text-white-50 small">Already have an account </span>
-                <a href="/login" className="text-white small text-decoration-none">Log-in</a>
+                <a href="/login" className="text-white small text-decoration-none">
+                  Log-in
+                </a>
               </div>
             </div>
           </div>
         </div>
       </div>
 
+      {/* Styles */}
       <style>{`
         @keyframes twinkle {
           0%, 100% { opacity: 0.2; transform: scale(1); }
           50% { opacity: 1; transform: scale(1.2); }
         }
-
         .form-control:focus {
           background-color: #2a2a2a;
           border-color: #0d6efd;
           box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
           color: white;
         }
-
         .form-control::placeholder {
           color: rgba(255, 255, 255, 0.4);
         }
-
         .btn:hover {
           transform: translateY(-1px);
           transition: transform 0.2s ease-in-out;
         }
-
         @media (max-width: 991.98px) {
           .display-5 {
             font-size: 1.5rem;
