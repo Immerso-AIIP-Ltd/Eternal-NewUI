@@ -9,7 +9,7 @@ import {auth} from './firebase/config';
 const LoginPage = () => {
      const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    email: 'john@gmail.com',
+    email: '',
     password: '',
     showPassword: false,
   });
