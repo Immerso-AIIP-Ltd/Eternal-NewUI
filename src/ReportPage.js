@@ -4,6 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import { db } from './firebase/config';
 import { useAuth } from './context/AuthContext';
 import './ReportPage.css';
+import image1 from './image1.png';
+import image2 from './image2.png';
+import image3 from './image3.png';
+import image4 from './image4.png';
+import image5 from './image5.png';
+import image6 from './image6.png';
+import image7 from './image7.png';
+import image8 from './image8.png';
+import image9 from './image9.png';
 
 const ReportPage = () => {
   const [report, setReport] = useState({});
@@ -26,6 +35,7 @@ const ReportPage = () => {
         setLoading(true);
         
         // Try to get from localStorage first (for immediate access)
+        // const localReport = localStorage.getItem('eternalWellnessReport');
         const localReport = localStorage.getItem('eternalWellnessReport');
         if (localReport) {
           const parsedReport = JSON.parse(localReport);
