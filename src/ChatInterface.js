@@ -19,7 +19,7 @@ const Chatbot = () => {
     },
   ]);
   const [inputValue, setInputValue] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);F
   const [chatComplete, setChatComplete] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [questionIndex, setQuestionIndex] = useState(0);
@@ -73,13 +73,13 @@ If the answer is missing, unclear, or in the wrong format, **ask the user again*
 7. What is your favorite color?
 8. What is your height? (In cm or feet+inches.)
 9. What is your weight? (In kg or pounds.)
-10. What is your usual sleep schedule like?
+10. What is your usual sleep schedule like? (How many hours, any irregularities, etc.)
 11. How active are you physically? (Daily walk, gym, yoga, sedentary, etc.)
 12. Do you drink alcohol? (Yes/No/Sometimes.)
 13. Do you smoke? (Yes/No/Occasionally.)
 
 🌿 NUTRITION & RHYTHM
-14. How would you describe your typical daily diet?
+14. How would you describe your typical daily diet?  (Vegetarian, vegan, Non-vegetarian), omnivore, etc.)
 15. How much water do you drink per day? (In litres or glasses.)
 
 🌿 EMOTIONAL & MENTAL STATE
@@ -96,7 +96,7 @@ If the answer is missing, unclear, or in the wrong format, **ask the user again*
 Once the 19th question is answered correctly, say this:
 
 "Thank you for sharing all this sacred information. To complete your spiritual profile, I need to analyze your palm.  
-Please upload a clear image of your **LEFT palm if you're MALE**, or your **RIGHT palm if you're FEMALE**.  
+Please upload a clear image of your **RIGHT palm if you're MALE**, or your **LEFT palm if you're FEMALE**.  
 This follows traditional palmistry principles for the most accurate reading."
 
 ---
@@ -188,7 +188,7 @@ This follows traditional palmistry principles for the most accurate reading."
           setPalmImage(e.target.result);
           setPalmImageUploaded(true);
           
-          const correctHand = userGender === 'male' ? 'left' : 'right';
+          const correctHand = userGender === 'male' ? 'right' : 'left';
           
           // Add palm image to messages
           const palmMessage = {
@@ -456,7 +456,7 @@ This follows traditional palmistry principles for the most accurate reading."
       'SPIRITUAL ALIGNMENT SCORE': 'Your spiritual alignment indicates how connected you are to your higher purpose, divine guidance, and authentic spiritual path.',
       'PALM READINGS': palmImageUploaded ? 
         'Your palm analysis reveals profound insights about your life path, relationships, health patterns, and spiritual destiny written in the sacred lines of your hands.' : 
-        'Palm reading requires an uploaded image of your correct hand (left for males, right for females) to provide detailed palmistry analysis.',
+        'Palm reading requires an uploaded image of your correct hand (right for males, left for females) to provide detailed palmistry analysis.',
       'HEALTH INSIGHTS': 'Your overall health insights provide holistic guidance for maintaining optimal physical, mental, emotional, and spiritual wellbeing throughout your journey.'
     };
     return defaults[title] || 'Insights and guidance for your spiritual journey and soul evolution.';
@@ -501,8 +501,8 @@ This follows traditional palmistry principles for the most accurate reading."
         },
         "PALM READINGS": {
           description: palmImageUploaded ? 
-            `Your ${userGender === 'male' ? 'left' : 'right'} palm reveals a strong life line indicating vitality and longevity. Deep heart line shows capacity for profound emotional connections. Your head line indicates analytical thinking balanced with strong intuition. Mount of Apollo shows creative gifts waiting to be fully expressed.` : 
-            `Palm analysis requires image upload of your ${userGender === 'male' ? 'left' : 'right'} palm for detailed reading.`,
+            `Your ${userGender === 'male' ? 'right' : 'left'} palm reveals a strong life line indicating vitality and longevity. Deep heart line shows capacity for profound emotional connections. Your head line indicates analytical thinking balanced with strong intuition. Mount of Apollo shows creative gifts waiting to be fully expressed.` : 
+            `Palm analysis requires image upload of your ${userGender === 'male' ? 'right' : 'left'} palm for detailed reading.`,
           score: palmImageUploaded ? 84 : 0
         },
         "HEALTH INSIGHTS": {
@@ -525,7 +525,7 @@ This follows traditional palmistry principles for the most accurate reading."
     return null;
   }
 
-  const correctHand = userGender === 'male' ? 'LEFT' : 'RIGHT';
+  const correctHand = userGender === 'male' ? 'RIGHT' : 'LEFT';
 
 return (
   <>
@@ -1695,7 +1695,7 @@ return (
                   For accurate palm reading analysis, please upload a clear, well-lit image of your palm
                 </div>
                 <div className="upload-instruction">
-                  📋 {userGender === 'male' ? 'MALES: Upload LEFT palm' : 'FEMALES: Upload RIGHT palm'}
+                  📋 {userGender === 'male' ? 'MALES: Upload RIGHT palm' : 'FEMALES: Upload LEFT palm'}
                   <br />
                   {userGender ? '' : 'Please specify your gender first for correct palm selection'}
                 </div>
