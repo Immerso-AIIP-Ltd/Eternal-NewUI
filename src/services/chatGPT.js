@@ -3,8 +3,9 @@ import axios from 'axios';
 
 // API settings (in production, store these in environment variables)
 const API_ENDPOINT = process.env.REACT_APP_OPENAI_API_ENDPOINT || 'https://api.openai.com/v1/chat/completions';
-const API_KEY = process.env.REACT_APP_OPENAI_API_KEY
+const API_KEY = process.env.REACT_APP_OPENAI_API_KEY;
 const MODEL = 'gpt-3.5-turbo'; // You can upgrade to GPT-4 for better results if available
+const VISION_MODEL = 'gpt-4o'; // Model for image analysis
 
 /**
  * Sends a message to the GPT API and gets a response
@@ -42,6 +43,84 @@ export const sendChatMessage = async (messages) => {
     console.error('Error calling GPT API:', error);
     // Return mock response as fallback
     return getMockResponse(messages);
+  }
+};
+
+/**
+ * Analyzes an uploaded image to verify if it's a valid palm image
+ * @param {String} imageBase64 - Base64 encoded image string
+ * @param {String} prompt - Analysis prompt for the image
+ * @returns {Promise<String>} - Validation result
+ */
+export const analyzeImage = async (imageBase64, prompt) => {
+  try {
+    // Check if API key is configured
+    if (!API_KEY) {
+      console.log('No API key found for image analysis. Using mock validation.');
+      return getMockImageValidation(imageBase64);
+    }
+
+    // Remove the data URL prefix if present
+    const base64Image = imageBase64.startsWith('data:') 
+      ? imageBase64.split(',')[1] 
+      : imageBase64;
+
+    const response = await axios.post(
+      API_ENDPOINT,
+      {
+        model: VISION_MODEL,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: prompt
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:image/jpeg;base64,${base64Image}`,
+                  detail: 'high'
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 100,
+        temperature: 0.1 // Low temperature for more consistent validation
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${API_KEY}`
+        }
+      }
+    );
+
+    const result = response.data.choices[0].message.content.trim();
+    
+    // Validate that we got one of the expected responses
+    const validResponses = ['VALID_PALM', 'NOT_PALM', 'UNCLEAR_PALM', 'WRONG_SIDE', 'PARTIAL_HAND'];
+    if (validResponses.includes(result)) {
+      return result;
+    } else {
+      // If GPT didn't return expected format, be conservative and reject
+      console.log('Unexpected GPT response:', result);
+      return 'NOT_PALM';
+    }
+  } catch (error) {
+    console.error('Error in image analysis:', error);
+    
+    // Check for specific error types
+    if (error.response && error.response.status === 404) {
+      console.log('GPT-4o Vision not available (404). Using strict validation.');
+      // For 404 errors, be more conservative - likely means Vision API isn't available
+      return 'NOT_PALM';
+    }
+    
+    // For other errors, use mock validation but be stricter
+    return getMockImageValidation(imageBase64);
   }
 };
 
@@ -157,6 +236,25 @@ export const generateWellnessReport = async (conversation) => {
 };
 
 /**
+ * Mock image validation for when API key is not available
+ * @param {String} imageBase64 - Base64 image string
+ * @returns {String} - Mock validation result
+ */
+const getMockImageValidation = (imageBase64) => {
+  // Simple mock validation - in production this would use actual image analysis
+  if (!imageBase64 || imageBase64.length < 1000) {
+    return 'UNCLEAR_PALM';
+  }
+  
+  // For testing without API key, let's make it strict but allow some valid palms
+  // You can temporarily change this to 'VALID_PALM' to test the upload flow
+  const validationResults = ['NOT_PALM', 'NOT_PALM', 'WRONG_SIDE', 'UNCLEAR_PALM', 'VALID_PALM'];
+  const randomIndex = Math.floor(Math.random() * validationResults.length);
+  
+  return validationResults[randomIndex];
+};
+
+/**
  * Provides a mock response for chat messages when no API key is available
  * @param {Array} messages - Array of message objects
  * @returns {String} - Mock response text
@@ -224,13 +322,13 @@ const getMockResponse = (messages) => {
   }
   
   if (lastMessage.includes('health') || lastMessage.includes('energy')) {
-    const palmHand = userGender === 'male' ? 'LEFT' : userGender === 'female' ? 'RIGHT' : 'correct';
-    return `Thank you for sharing all this information! To complete your spiritual profile, I need to analyze your palm. For accurate palm reading, please upload a clear image of your ${palmHand} palm ${userGender ? (userGender === 'male' ? '(left for males)' : '(right for females)') : '(left for males, right for females)'}. This ancient practice follows traditional palmistry guidelines for the most accurate reading.`;
+    const palmHand = userGender === 'male' ? 'RIGHT' : userGender === 'female' ? 'LEFT' : 'correct';
+    return `Thank you for sharing all this information! To complete your spiritual profile, I need to analyze your palm. For accurate palm reading, please upload a clear image of your ${palmHand} palm ${userGender ? (userGender === 'male' ? '(right for males)' : '(left for females)') : '(right for males, left for females)'}. This ancient practice follows traditional palmistry guidelines for the most accurate reading.`;
   }
   
   // Check if asking for palm reading
   if (lastMessage.includes('palm') || lastMessage.includes('hand')) {
-    const palmHand = userGender === 'male' ? 'LEFT' : userGender === 'female' ? 'RIGHT' : 'correct';
+    const palmHand = userGender === 'male' ? 'RIGHT' : userGender === 'female' ? 'LEFT' : 'correct';
     return `To complete your spiritual profile, I'd like to analyze your palm. Please upload a clear image of your ${palmHand} palm for a detailed palm reading. This will add valuable insights about your life path, relationships, and destiny to your report.`;
   }
   
@@ -281,7 +379,7 @@ PALM READINGS
 ${palmImageUploaded ? 
   `Your palm reveals a strong, clear life line indicating excellent vitality and longevity extending well into your 80s. The deep heart line shows your capacity for profound emotional connections and healing love. Your head line demonstrates perfect balance between analytical thinking and intuitive wisdom. The Mount of Apollo is well-developed, indicating creative gifts and spiritual leadership abilities that are ready to be fully expressed in the world.
 Score: 84/100` :
-  `Palm reading analysis requires an uploaded palm image to provide detailed insights. Your palm lines would reveal information about your life path, health patterns, relationship tendencies, and creative potential. Please upload a clear photo of your correct hand (left for males, right for females) to unlock this powerful aspect of your spiritual analysis.
+  `Palm reading analysis requires an uploaded palm image to provide detailed insights. Your palm lines would reveal information about your life path, health patterns, relationship tendencies, and creative potential. Please upload a clear photo of your correct hand (right for males, left for females) to unlock this powerful aspect of your spiritual analysis.
 Score: 0/100`}
 
 HEALTH INSIGHTS
@@ -407,5 +505,6 @@ Begin each day with a 5-minute visualization practice. Sit comfortably with your
 export default {
   sendChatMessage,
   generateWellnessReport,
-  generateComprehensiveReport
+  generateComprehensiveReport,
+  analyzeImage
 };

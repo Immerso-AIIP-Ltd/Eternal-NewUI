@@ -4,15 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import { db } from './firebase/config';
 import { useAuth } from './context/AuthContext';
 import './ReportPage.css';
-import image1 from './image1.png';
-import image2 from './image2.png';
-import image3 from './image3.png';
-import image4 from './image4.png';
-import image5 from './image5.png';
-import image6 from './image6.png';
-import image7 from './image7.png';
-import image8 from './image8.png';
-import image9 from './image9.png';
+// import image1 from './image1.png';
+// import image2 from './image2.png';
+// import image3 from './image3.png';
+// import image4 from './image4.png';
+// import image5 from './image5.png';
+// import image6 from './image6.png';
+// import image7 from './image7.png';
+// import image8 from './image8.png';
+// import image9 from './image9.png';
 
 const ReportPage = () => {
   const [report, setReport] = useState({});
@@ -431,7 +431,7 @@ const ReportPage = () => {
                           color: 'rgba(255,255,255,0.7)', 
                           marginTop: '8px' 
                         }}>
-                          {userGender === 'male' ? 'Left' : 'Right'} Palm Analysis
+                          {userGender === 'male' ? 'Right' : 'Left'} Palm Analysis
                         </p>
                       </div>
                     )}
@@ -559,7 +559,7 @@ const ReportPage = () => {
                         onClick={() => navigate('/chat')}
                         style={{ marginTop: '15px' }}
                       >
-                        Upload {userGender === 'male' ? 'Left' : 'Right'} Palm Image
+                        Upload {userGender === 'male' ? 'Right' : 'Left'} Palm Image
                       </button>
                     </>
                   )}
@@ -667,7 +667,7 @@ const ReportPage = () => {
                 <h4 style={{ color: '#A1DE2F', marginBottom: '15px' }}>🖐️ Your Palm Analysis</h4>
                 <img 
                   src={palmImageUrl} 
-                  alt={`${userGender === 'male' ? 'Left' : 'Right'} Palm`}
+                  alt={`${userGender === 'male' ? 'Right' : 'Left'} Palm`}
                   style={{ 
                     maxWidth: '300px', 
                     height: '250px', 
@@ -681,7 +681,7 @@ const ReportPage = () => {
                   color: 'rgba(255,255,255,0.8)', 
                   marginTop: '10px' 
                 }}>
-                  {userGender === 'male' ? 'Left' : 'Right'} Palm - Traditional palmistry analysis as per ancient guidelines
+                  {userGender === 'male' ? 'Right' : 'Left'} Palm - Traditional palmistry analysis as per ancient guidelines
                 </p>
               </div>
             )}

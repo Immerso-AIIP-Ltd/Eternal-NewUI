@@ -19,7 +19,7 @@ const Chatbot = () => {
     },
   ]);
   const [inputValue, setInputValue] = useState('');
-  const [loading, setLoading] = useState(false);F
+  const [loading, setLoading] = useState(false);
   const [chatComplete, setChatComplete] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [questionIndex, setQuestionIndex] = useState(0);
@@ -30,6 +30,7 @@ const Chatbot = () => {
   const [palmImage, setPalmImage] = useState(null);
   const [palmImageUrl, setPalmImageUrl] = useState(null);
   const [userGender, setUserGender] = useState(null);
+  const [imageValidationAttempts, setImageValidationAttempts] = useState(0);
   const messagesEndRef = useRef(null);
   const { currentUser } = useAuth();
   const navigate = useNavigate();
@@ -53,7 +54,7 @@ If the answer is missing, unclear, or in the wrong format, **ask the user again*
 - Ask **one question at a time**.
 - After the user replies, validate the answer:
   - If it's valid, thank them briefly and go to the next question.
-  - If it's incomplete or doesn’t fit the expected format, gently ask for clarification or correction.
+  - If it's incomplete or doesn't fit the expected format, gently ask for clarification or correction.
 - Keep each message short (1–3 sentences).
 - Be empathetic and non-judgmental, even if the user gives an incorrect or vague response.
 
@@ -88,7 +89,7 @@ If the answer is missing, unclear, or in the wrong format, **ask the user again*
 🌿 RELATIONSHIPS & ENERGETICS
 17. Do you feel supported by the people in your life?
 18. Are there any relationships that drain your energy?
-19. Do you feel connected to your life’s purpose?
+19. Do you feel connected to your life's purpose?
 
 ---
 
@@ -109,8 +110,6 @@ This follows traditional palmistry principles for the most accurate reading."
 `
   }
 ]);
-
-
 
   // Effect to scroll to bottom when messages change - FIXED FLICKERING
   useEffect(() => {
@@ -166,78 +165,177 @@ This follows traditional palmistry principles for the most accurate reading."
     }
   };
 
+  // Function to convert image file to base64 for GPT analysis
+  const convertImageToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Function to validate if uploaded image is actually a palm using GPT Vision
+  const validatePalmImage = async (imageBase64) => {
+    try {
+      const prompt = `Analyze this image carefully and determine if it shows a human palm/hand. 
+
+Requirements for a valid palm image:
+1. Must show the palm side (inside) of a human hand
+2. Palm lines should be clearly visible
+3. Fingers and thumb should be visible and spread out
+4. Image should be clear enough for palmistry analysis
+5. Should not be the back of hand, fist, or partial hand
+
+Respond with ONLY one of these exact phrases:
+- "VALID_PALM" if this is a clear palm image suitable for palmistry
+- "NOT_PALM" if this is not a palm or hand at all
+- "UNCLEAR_PALM" if this is a hand/palm but too blurry, dark, or unclear for analysis
+- "WRONG_SIDE" if this shows the back of the hand instead of palm
+- "PARTIAL_HAND" if only part of the hand/palm is visible
+
+Do not provide any other explanation, just the exact phrase.`;
+
+      const response = await chatGPT.analyzeImage(imageBase64, prompt);
+      return response.trim();
+    } catch (error) {
+      console.error('Error validating palm image:', error);
+      return 'VALIDATION_ERROR';
+    }
+  };
+
   // Function to handle user input
   const handleInputChange = (e) => {
     setInputValue(e.target.value);
   };
 
-  // Function to handle palm image upload
+  // Function to handle palm image upload with validation
+  // Function to handle palm image upload with validation
   const handlePalmImageUpload = async (event) => {
     const file = event.target.files[0];
     if (file) {
       try {
         setLoading(true);
         
-        // Upload to Firebase Storage
-        const imageUrl = await uploadPalmImage(file);
-        setPalmImageUrl(imageUrl);
+        // Convert image to base64 for GPT analysis
+        const imageBase64 = await convertImageToBase64(file);
         
-        // Also keep local preview
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          setPalmImage(e.target.result);
-          setPalmImageUploaded(true);
+        // Validate if the image is actually a palm using GPT
+        const validationResult = await validatePalmImage(imageBase64);
+        
+        // Handle validation results
+        if (validationResult === 'VALID_PALM') {
+          // Image is valid, proceed with upload
+          try {
+            const imageUrl = await uploadPalmImage(file);
+            setPalmImageUrl(imageUrl);
+            setPalmImage(imageBase64);
+            setPalmImageUploaded(true);
+            
+            const correctHand = userGender === 'male' ? 'right' : 'left';
+            
+            const palmMessage = {
+              role: 'user',
+              content: `Palm image uploaded (${correctHand} palm)`,
+              image: imageBase64,
+              imageUrl: imageUrl,
+              timestamp: Date.now(),
+            };
+            
+            const confirmationMessage = {
+              role: 'assistant',
+              content: `Perfect! I can see your ${correctHand} palm clearly. The lines and mounts are well-defined for accurate analysis. I now have everything I need to generate your comprehensive spiritual wellness report including detailed palmistry insights. Would you like me to create your personalized report now?`,
+              timestamp: Date.now(),
+            };
+            
+            setMessages(prev => [...prev, palmMessage, confirmationMessage]);
+            setChatComplete(true);
+            setShowPalmUpload(false);
+            setImageValidationAttempts(0); // Reset attempts on success
+            
+          } catch (uploadError) {
+            console.error('Error uploading to Firebase:', uploadError);
+            // Even if Firebase upload fails, we can still use the validated image locally
+            setPalmImage(imageBase64);
+            setPalmImageUploaded(true);
+            
+            const palmMessage = {
+              role: 'user',
+              content: 'Palm image uploaded',
+              image: imageBase64,
+              timestamp: Date.now(),
+            };
+            
+            const confirmationMessage = {
+              role: 'assistant',
+              content: 'Perfect! I can see your palm clearly. I now have everything I need to generate your comprehensive spiritual wellness report. Would you like me to create your personalized report now?',
+              timestamp: Date.now(),
+            };
+            
+            setMessages(prev => [...prev, palmMessage, confirmationMessage]);
+            setChatComplete(true);
+            setShowPalmUpload(false);
+            setImageValidationAttempts(0);
+          }
           
-          const correctHand = userGender === 'male' ? 'right' : 'left';
+        } else {
+          // Image is not valid, show appropriate error message
+          setImageValidationAttempts(prev => prev + 1);
           
-          // Add palm image to messages
-          const palmMessage = {
-            role: 'user',
-            content: `Palm image uploaded (${correctHand} palm)`,
-            image: e.target.result,
-            imageUrl: imageUrl,
-            timestamp: Date.now(),
-          };
+          let errorMessage = '';
+          let suggestion = '';
           
-          const confirmationMessage = {
+          switch (validationResult) {
+            case 'NOT_PALM':
+              errorMessage = 'This image doesn\'t appear to show a human hand or palm.';
+              suggestion = 'Please upload a clear image of your palm (inside of your hand).';
+              break;
+            case 'UNCLEAR_PALM':
+              errorMessage = 'The palm image is too blurry or unclear for accurate analysis.';
+              suggestion = 'Please take a clearer, well-lit photo of your palm with all lines visible.';
+              break;
+            case 'WRONG_SIDE':
+              errorMessage = 'This appears to be the back of your hand rather than your palm.';
+              suggestion = 'Please upload an image showing your palm (the inside of your hand with visible lines).';
+              break;
+            case 'PARTIAL_HAND':
+              errorMessage = 'Only part of your hand is visible in this image.';
+              suggestion = 'Please upload a complete image of your palm with fingers and thumb visible.';
+              break;
+            case 'VALIDATION_ERROR':
+              errorMessage = 'Unable to analyze the image at the moment.';
+              suggestion = 'Please try uploading the image again, or ensure it\'s a clear palm photo.';
+              break;
+            default:
+              errorMessage = 'The uploaded image doesn\'t meet the requirements for palm analysis.';
+              suggestion = 'Please upload a clear, well-lit image of your palm.';
+          }
+          
+          const correctHand = userGender === 'male' ? 'RIGHT' : 'LEFT';
+          const attemptsText = imageValidationAttempts >= 2 ? 
+            '\n\n💡 **Tips for a good palm photo:**\n- Use good lighting (natural light works best)\n- Keep your hand flat and fingers spread\n- Make sure all palm lines are clearly visible\n- Avoid shadows or reflections' : '';
+          
+          const rejectionMessage = {
             role: 'assistant',
-            content: `Perfect! I can see your ${correctHand} palm clearly. The lines and mounts are well-defined for accurate analysis. I now have everything I need to generate your comprehensive spiritual wellness report including detailed palmistry insights. Would you like me to create your personalized report now?`,
+            content: `🤔 ${errorMessage}\n\n${suggestion}\n\nRemember: I need your **${correctHand} palm** for accurate traditional palmistry analysis.${attemptsText}`,
             timestamp: Date.now(),
           };
           
-          setMessages(prev => [...prev, palmMessage, confirmationMessage]);
-          setChatComplete(true);
-          setShowPalmUpload(false);
-          setLoading(false);
-        };
-        reader.readAsDataURL(file);
+          setMessages(prev => [...prev, rejectionMessage]);
+        }
+        
       } catch (error) {
-        console.error('Error uploading palm image:', error);
-        setLoading(false);
-        // Still show the image locally even if upload fails
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          setPalmImage(e.target.result);
-          setPalmImageUploaded(true);
-          
-          const palmMessage = {
-            role: 'user',
-            content: 'Palm image uploaded',
-            image: e.target.result,
-            timestamp: Date.now(),
-          };
-          
-          const confirmationMessage = {
-            role: 'assistant',
-            content: 'Perfect! I can see your palm clearly. I now have everything I need to generate your comprehensive spiritual wellness report. Would you like me to create your personalized report now?',
-            timestamp: Date.now(),
-          };
-          
-          setMessages(prev => [...prev, palmMessage, confirmationMessage]);
-          setChatComplete(true);
-          setShowPalmUpload(false);
+        console.error('Error processing palm image:', error);
+        const errorMessage = {
+          role: 'assistant',
+          content: 'I encountered an error while analyzing your image. Please try uploading your palm image again.',
+          timestamp: Date.now(),
         };
-        reader.readAsDataURL(file);
+        setMessages(prev => [...prev, errorMessage]);
+      } finally {
+        setLoading(false);
+        // Clear the file input so user can upload the same file again if needed
+        event.target.value = '';
       }
     }
   };
@@ -310,6 +408,7 @@ This follows traditional palmistry principles for the most accurate reading."
       if (botResponse.toLowerCase().includes('palm') && 
           (botResponse.toLowerCase().includes('upload') || botResponse.toLowerCase().includes('image'))) {
         setShowPalmUpload(true);
+        setImageValidationAttempts(0); // Reset validation attempts when starting fresh
       }
 
       // Check if chat should complete based on message content
@@ -856,13 +955,16 @@ return (
           line-height: 1.6;
           font-size: 15px;
           color: rgba(255, 255, 255, 0.9);
+          white-space: pre-wrap;
         }
 
         .message-image {
           max-width: 100%;
+          max-height: 300px;
           height: auto;
           border-radius: 12px;
           margin-top: 10px;
+          border: 2px solid rgba(161, 222, 47, 0.3);
         }
 
         .palm-upload-section {
@@ -931,11 +1033,41 @@ return (
           font-weight: 600;
           cursor: pointer;
           transition: all 0.3s ease;
+          position: relative;
+          overflow: hidden;
         }
 
         .upload-btn:hover {
           transform: translateY(-2px);
           box-shadow: 0 8px 20px rgba(161, 222, 47, 0.4);
+        }
+
+        .upload-btn:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+          transform: none;
+        }
+
+        .validation-error {
+          background: rgba(244, 67, 54, 0.1);
+          border: 1px solid rgba(244, 67, 54, 0.3);
+          border-radius: 12px;
+          padding: 16px;
+          margin: 16px 0;
+          color: rgba(244, 67, 54, 0.9);
+          font-size: 14px;
+          line-height: 1.5;
+        }
+
+        .validation-tips {
+          background: rgba(161, 222, 47, 0.1);
+          border: 1px solid rgba(161, 222, 47, 0.3);
+          border-radius: 12px;
+          padding: 16px;
+          margin: 16px 0;
+          color: rgba(161, 222, 47, 0.9);
+          font-size: 13px;
+          line-height: 1.5;
         }
 
         .chat-input-area {
@@ -1572,8 +1704,8 @@ return (
         /* Focus States for Accessibility */
         .chat-input:focus,
         .search-bar:focus {
-          box-shadow: 0 0 0px rgba(0, 0, 0, 0.8);  /* Green glow */
-          outline: none;  /* Optional: to remove the outline */
+          box-shadow: 0 0 0px rgba(0, 0, 0, 0.8);
+          outline: none;
         }
         .input-btn:focus,
         .upload-btn:focus,
@@ -1699,6 +1831,18 @@ return (
                   <br />
                   {userGender ? '' : 'Please specify your gender first for correct palm selection'}
                 </div>
+                
+                {imageValidationAttempts >= 2 && (
+                  <div className="validation-tips">
+                    <strong>💡 Tips for a perfect palm photo:</strong><br />
+                    • Use natural lighting or bright room light<br />
+                    • Keep your hand flat with fingers spread apart<br />
+                    • Ensure all palm lines are clearly visible<br />
+                    • Avoid shadows, reflections, or blurry images<br />
+                    • Show your complete palm from wrist to fingertips
+                  </div>
+                )}
+                
                 <input
                   type="file"
                   accept="image/*"
@@ -1708,8 +1852,24 @@ return (
                   disabled={loading}
                 />
                 <label htmlFor="palm-upload" className="upload-btn">
-                  {loading ? 'Uploading...' : `Choose ${correctHand} Palm Image`}
+                  {loading ? (
+                    <>
+                      <span className="loader" style={{ width: '16px', height: '16px', marginRight: '8px' }}></span>
+                      Analyzing Image...
+                    </>
+                  ) : (
+                    `Choose ${correctHand} Palm Image`
+                  )}
                 </label>
+                
+                <div style={{ 
+                  fontSize: '12px', 
+                  color: 'rgba(255,255,255,0.6)', 
+                  marginTop: '12px',
+                  fontStyle: 'italic'
+                }}>
+                  Our AI will verify that your image shows a clear palm before proceeding
+                </div>
               </div>
             </div>
           )}
