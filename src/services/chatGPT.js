@@ -8,6 +8,61 @@ const MODEL = 'gpt-3.5-turbo'; // You can upgrade to GPT-4 for better results if
 const VISION_MODEL = 'gpt-4o'; // Model for image analysis
 
 /**
+ * Generates a unique seed for each user to ensure varied results
+ * @param {Array} userResponses - User's responses
+ * @returns {String} - Unique user seed
+ */
+const generateUserSeed = (userResponses) => {
+  const responseText = userResponses.join('').toLowerCase();
+  const timestamp = Date.now();
+  const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+  const textLength = responseText.length;
+  const vowelCount = (responseText.match(/[aeiou]/g) || []).length;
+  const consonantCount = textLength - vowelCount;
+  
+  return `${timestamp % 1000}${dayOfYear}${textLength % 100}${vowelCount % 50}${consonantCount % 50}`;
+};
+
+/**
+ * Generates dynamic score based on user characteristics
+ * @param {String} section - Section name
+ * @param {String} userSeed - User's unique seed
+ * @param {Array} userResponses - User responses
+ * @returns {Number} - Dynamic score between 35-95
+ */
+const generateDynamicScore = (section, userSeed, userResponses) => {
+  const seedNum = parseInt(userSeed.slice(-3));
+  const responseText = userResponses.join(' ').toLowerCase();
+  
+  // Base score calculations for different sections
+  const baseScores = {
+    'NUMEROLOGY': 35 + (seedNum % 60),
+    'ARCHETYPE': 45 + ((seedNum * 7) % 50),
+    'VIBRATIONAL': 38 + ((seedNum * 11) % 55),
+    'AURA': 42 + ((seedNum * 13) % 53),
+    'RELATIONSHIP': 50 + ((seedNum * 17) % 40),
+    'MENTAL': 55 + ((seedNum * 19) % 40),
+    'SPIRITUAL': 40 + ((seedNum * 23) % 55),
+    'PALM': 45 + ((seedNum * 29) % 45),
+    'HEALTH': 48 + ((seedNum * 31) % 47)
+  };
+  
+  // Adjust based on response content
+  let adjustment = 0;
+  if (responseText.includes('meditat') || responseText.includes('spiritual')) adjustment += 10;
+  if (responseText.includes('stress') || responseText.includes('anxiety')) adjustment -= 5;
+  if (responseText.includes('happy') || responseText.includes('peaceful')) adjustment += 8;
+  if (responseText.includes('exercise') || responseText.includes('active')) adjustment += 6;
+  if (responseText.includes('sleep') && responseText.includes('well')) adjustment += 5;
+  
+  const sectionKey = section.split(' ')[0];
+  const baseScore = baseScores[sectionKey] || 60;
+  const finalScore = Math.min(95, Math.max(35, baseScore + adjustment));
+  
+  return finalScore;
+};
+
+/**
  * Sends a message to the GPT API and gets a response
  * @param {Array} messages - Array of message objects with role and content
  * @returns {Promise<String>} - GPT's response text
@@ -125,64 +180,80 @@ export const analyzeImage = async (imageBase64, prompt) => {
 };
 
 /**
- * Generates a comprehensive wellness report using GPT with the new 9-section structure
+ * Generates a comprehensive wellness report using GPT with enhanced personalization
  * @param {Array} userResponses - Array of user responses from the conversation
  * @param {Boolean} palmImageUploaded - Whether palm image was uploaded
  * @returns {Promise<String>} - Generated report text
  */
 export const generateComprehensiveReport = async (userResponses, palmImageUploaded = false) => {
-  const reportPrompt = `You are an expert spiritual advisor and wellness coach. Based on the following user responses from a comprehensive spiritual assessment, generate a detailed report with exactly these 9 sections. Each section should be 2-3 well-structured sentences with specific insights and include a score from 60-100.
+  // Generate dynamic seed for varied results
+  const userSeed = generateUserSeed(userResponses);
+  const currentDate = new Date().toISOString().split('T')[0];
+  const userText = userResponses.join(' ');
+  
+  const reportPrompt = `You are Eternal AI, an advanced spiritual advisor with deep expertise in metaphysical sciences. Create a HIGHLY PERSONALIZED spiritual wellness report based on the unique responses below. Each section must be distinctly different with varied scores and specific details.
 
-User responses: ${userResponses.join(' | ')}
-Palm image provided: ${palmImageUploaded ? 'Yes' : 'No'}
+CRITICAL INSTRUCTIONS FOR UNIQUENESS:
+- Make each response COMPLETELY UNIQUE based on specific user answers
+- Vary scores significantly (use realistic distributions: some 35-50, some 60-75, some 80-95)
+- Include specific numbers, dates, colors, frequencies, and measurements
+- Reference the user's actual words and responses directly in quotes
+- Create realistic score patterns that reflect actual spiritual assessment
+- Avoid generic responses - be highly specific to this individual
 
-Generate a detailed analysis for each section in this EXACT format:
+USER PROFILE SEED: ${userSeed}
+ANALYSIS DATE: ${currentDate}
+PALM IMAGE: ${palmImageUploaded ? 'Uploaded for detailed palm reading' : 'No palm image provided'}
+
+USER RESPONSES: ${userResponses.join(' || ')}
+
+Generate EXACTLY these 9 sections with highly varied and specific content:
 
 NUMEROLOGY WITH DATE OF BIRTH
-[Provide detailed numerological analysis including Life Path Number, Expression Number, and Soul Urge Number with specific meanings and calculations based on any dates mentioned in responses]
-Score: [X]/100
+[Extract any birth dates/ages mentioned.Calculate specific Life Path Number, Expression Number, Soul Urge Number. Include lucky numbers (not generic 7,11,22), challenging years, current numerological cycle. Reference actual birth details from responses. Mention specific numerological influences for this year.]
+Score: [Generate varied score 35-95]/100
 
 ETERNAL ARCHETYPE PROFILE  
-[Determine their spiritual personality type such as Healer, Mystic, Teacher, Guardian, Seeker, etc. with detailed characteristics and spiritual gifts based on their responses]
-Score: [X]/100
+[Analyze personality from responses to determine ONE specific archetype: Ancient Healer, Cosmic Teacher, Intuitive Mystic, Earth Guardian, Quantum Seeker, Light Warrior, Soul Alchemist, Dream Walker, Energy Weaver, etc. Describe their unique spiritual gifts, shadow aspects, and evolutionary path based on actual responses. Quote user responses.]
+Score: [Generate varied score 45-90]/100
 
 VIBRATIONAL FREQUENCY DASHBOARD
-[Assess their current energetic frequency, mention specific Hz if possible (like 528Hz, 432Hz), and describe their vibrational state and energy patterns]
-Score: [X]/100
+[Assign specific frequency (432Hz, 528Hz, 741Hz, 852Hz, 963Hz, etc.) based on user energy. Analyze energy patterns from mood/stress responses. Mention specific times when energy peaks/dips. Include geometric patterns (triangles, spirals, mandalas) or colors associated with frequency. Reference their actual lifestyle responses.]
+Score: [Generate varied score 38-88]/100
 
 AURA AND CHAKRA HEALTH
-[Analyze specific aura colors (blue, green, violet, etc.) and detailed chakra balance/blockages, mentioning specific chakras and their conditions]
-Score: [X]/100
+[Identify 2-3 specific aura colors (not generic blue/green): crimson, turquoise, amber, magenta, silver, gold. Detail which chakras are blocked/open based on lifestyle answers. Mention specific crystals (amethyst, rose quartz, citrine), essential oils (frankincense, lavender, peppermint), practices. Reference their actual health/stress responses.]
+Score: [Generate varied score 42-92]/100
 
 RELATIONSHIP RESONANCE MAP
-[Evaluate how they connect with others energetically, relationship patterns, and energy exchange dynamics based on their responses about relationships]
-Score: [X]/100
+[Analyze relationship patterns from their responses about supportive/draining relationships. Identify their specific love language (words of affirmation, physical touch, etc.), attachment style (secure, anxious, avoidant). Mention specific relationship challenges and gifts. Quote their relationship responses.]
+Score: [Generate varied score 50-85]/100
 
 MENTAL EMOTIONAL HEALTH
-[Assess emotional patterns, mental clarity, psychological wellbeing, and empathic abilities based on their stress, mood, and emotional responses]
-Score: [X]/100
+[Assess from stress/anxiety/mood responses. Identify specific emotional patterns, triggers, coping mechanisms. Mention specific mental health practices (CBT, mindfulness, journaling), meditation styles (Vipassana, Transcendental, loving-kindness), therapeutic approaches. Reference their actual emotional responses.]
+Score: [Generate varied score 55-95]/100
 
 SPIRITUAL ALIGNMENT SCORE
-[Measure connection to higher self, spiritual practices effectiveness, and life purpose alignment based on their spiritual practices and beliefs]
-Score: [X]/100
+[Evaluate based on their spiritual practice responses. Assess connection to higher self, intuition usage, life purpose clarity. Mention specific spiritual practices they mentioned, deities/guides (Archangel Michael, Buddha, etc.), traditions (Buddhism, Christianity, Paganism) that resonate. Quote spiritual responses.]
+Score: [Generate varied score 40-90]/100
 
 PALM READINGS
 ${palmImageUploaded ? 
-  '[Provide detailed palm reading analysis including life line (health/vitality), heart line (emotions/relationships), head line (intellect/communication), fate line (career/destiny), and mounts analysis (personality traits). Mention specific characteristics and their meanings for the uploaded palm]' : 
-  '[Explain that detailed palm reading requires uploaded palm image and describe what insights would be provided with proper image - life line, heart line, head line, fate line, and mounts analysis. Mention the importance of using correct hand (left for males, right for females)]'}
-Score: [X]/100
+  '[Provide detailed palm reading with specific line descriptions: Life line (length 65mm, 3 breaks, chain formation at age 45), Heart line (deep, curves toward Saturn finger, fork ending), Head line (slopes 15 degrees, island at Mercury mount), Fate line (starts at wrist, breaks at 30, resumes at 35), Mount analysis (Venus prominent=passionate, Jupiter elevated=leadership). Mention specific markings like crosses at age 40, star on Apollo mount, triangle on Mercury mount.]' : 
+  '[Explain that detailed palm reading requires uploaded palm image. Describe what specific insights would be revealed: exact life span predictions, relationship timing, career changes at specific ages, health warnings, spiritual awakening periods. Mention importance of using correct hand based on their gender stated in responses.]'}
+Score: [Generate varied score 45-85]/100
 
 HEALTH INSIGHTS
-[Provide holistic wellness recommendations based on their responses, including physical, mental, emotional, and spiritual health guidance]
-Score: [X]/100
+[Based on sleep patterns, diet, exercise habits they mentioned. Provide specific recommendations: drink 2.3L water daily, walk 8,000 steps, sleep by 10:30 PM, avoid caffeine after 2 PM. Mention specific supplements (magnesium 400mg, B12, vitamin D3), herbs (ashwagandha, rhodiola), practices (breathwork 4-7-8 technique). Reference their actual health responses.]
+Score: [Generate varied score 48-88]/100
 
-Be specific, personalized, and spiritually insightful while remaining practical and grounded. Use the user's actual responses to create personalized insights for each section.`;
+Be extremely specific, personalized, and spiritually insightful. Use the user's actual responses extensively - quote them directly. Make scores realistically varied. Include specific numbers, measurements, and techniques throughout.`;
 
   try {
     // Check if API key is configured
     if (!API_KEY) {
-      console.log('No API key found for report generation. Using mock report.');
-      return getMockComprehensiveReportText(palmImageUploaded);
+      console.log('No API key found for report generation. Using enhanced mock report.');
+      return getMockComprehensiveReportText(userResponses, palmImageUploaded, userSeed);
     }
 
     // Make API request
@@ -191,11 +262,11 @@ Be specific, personalized, and spiritually insightful while remaining practical 
       {
         model: MODEL,
         messages: [
-          { role: 'system', content: 'You are an expert spiritual advisor generating comprehensive wellness reports with specific insights and scores. Follow the exact format requested with clear section breaks.' },
+          { role: 'system', content: 'You are Eternal AI, an expert spiritual advisor generating highly personalized wellness reports with specific insights and varied scores. Follow the exact format requested with clear section breaks and be extremely specific to each individual.' },
           { role: 'user', content: reportPrompt }
         ],
-        temperature: 0.7,
-        max_tokens: 3000, // Increased for comprehensive report
+        temperature: 0.8, // Increased for more varied responses
+        max_tokens: 3500, // Increased for comprehensive report
       },
       {
         headers: {
@@ -208,7 +279,7 @@ Be specific, personalized, and spiritually insightful while remaining practical 
     return response.data.choices[0].message.content;
   } catch (error) {
     console.error('Error generating comprehensive report:', error);
-    return getMockComprehensiveReportText(palmImageUploaded);
+    return getMockComprehensiveReportText(userResponses, palmImageUploaded, userSeed);
   }
 };
 
@@ -247,7 +318,6 @@ const getMockImageValidation = (imageBase64) => {
   }
   
   // For testing without API key, let's make it strict but allow some valid palms
-  // You can temporarily change this to 'VALID_PALM' to test the upload flow
   const validationResults = ['NOT_PALM', 'NOT_PALM', 'WRONG_SIDE', 'UNCLEAR_PALM', 'VALID_PALM'];
   const randomIndex = Math.floor(Math.random() * validationResults.length);
   
@@ -342,49 +412,94 @@ const getMockResponse = (messages) => {
 };
 
 /**
- * Provides a mock comprehensive report text when no API key is available
+ * Enhanced mock comprehensive report text with dynamic personalization
+ * @param {Array} userResponses - User's responses
  * @param {Boolean} palmImageUploaded - Whether palm image was uploaded
- * @returns {String} - Mock report text
+ * @param {String} userSeed - User's unique seed
+ * @returns {String} - Personalized mock report text
  */
-const getMockComprehensiveReportText = (palmImageUploaded) => {
+const getMockComprehensiveReportText = (userResponses, palmImageUploaded, userSeed) => {
+  const responseText = userResponses.join(' ').toLowerCase();
+  
+  // Extract personal details for customization
+  const hasBirthDate = responseText.match(/\d{1,2}\/\d{1,2}\/\d{2,4}/) || responseText.includes('born');
+  const isStressed = responseText.includes('stress') || responseText.includes('anxiety');
+  const isSpirituallyActive = responseText.includes('meditat') || responseText.includes('spiritual');
+  const hasRelationshipConcerns = responseText.includes('drain') || responseText.includes('toxic');
+  
+  // Generate dynamic elements based on user seed
+  const frequencies = ['432Hz', '528Hz', '741Hz', '852Hz', '963Hz'];
+  const auraColors = ['crimson red', 'turquoise blue', 'amber gold', 'violet purple', 'emerald green', 'silver white'];
+  const archetypes = ['Quantum Healer', 'Cosmic Teacher', 'Intuitive Mystic', 'Earth Guardian', 'Light Warrior', 'Soul Alchemist', 'Dream Walker', 'Energy Weaver'];
+  const crystals = ['amethyst', 'rose quartz', 'citrine', 'black tourmaline', 'selenite', 'labradorite'];
+  
+  const seedNum = parseInt(userSeed.slice(-3));
+  const selectedFrequency = frequencies[seedNum % frequencies.length];
+  const selectedAuraColor = auraColors[seedNum % auraColors.length];
+  const selectedArchetype = archetypes[seedNum % archetypes.length];
+  const selectedCrystal = crystals[seedNum % crystals.length];
+  
+  // Generate dynamic scores
+  const scores = {
+    numerology: generateDynamicScore('NUMEROLOGY', userSeed, userResponses),
+    archetype: generateDynamicScore('ARCHETYPE', userSeed, userResponses),
+    vibrational: generateDynamicScore('VIBRATIONAL', userSeed, userResponses),
+    aura: generateDynamicScore('AURA', userSeed, userResponses),
+    relationship: generateDynamicScore('RELATIONSHIP', userSeed, userResponses),
+    mental: generateDynamicScore('MENTAL', userSeed, userResponses),
+    spiritual: generateDynamicScore('SPIRITUAL', userSeed, userResponses),
+    palm: palmImageUploaded ? generateDynamicScore('PALM', userSeed, userResponses) : 0,
+    health: generateDynamicScore('HEALTH', userSeed, userResponses)
+  };
+
   return `NUMEROLOGY WITH DATE OF BIRTH
-Based on your birth date analysis, your Life Path Number is 7, indicating you are a natural spiritual seeker with deep intuitive abilities and a connection to mystical realms. Your Expression Number 3 reveals strong creative and communication gifts that should be utilized in your spiritual work. Your Soul Urge Number 9 shows a humanitarian spirit with a desire to heal and serve others on a soul level.
-Score: 88/100
+${hasBirthDate ? 
+  `Based on your birth date analysis, your Life Path Number is ${3 + (seedNum % 6)}, revealing a soul path focused on ${seedNum % 2 === 0 ? 'creative expression and communication' : 'spiritual leadership and healing'}. Your Expression Number ${6 + (seedNum % 4)} indicates ${seedNum % 3 === 0 ? 'strong analytical abilities combined with intuitive wisdom' : 'natural teaching gifts and empathic sensitivity'}. This year (2025) brings a ${seedNum % 2 === 0 ? '7' : '9'} personal year cycle, emphasizing ${seedNum % 2 === 0 ? 'introspection and spiritual development' : 'completion and humanitarian service'}.` :
+  `Your numerological profile indicates you're in a powerful transformation phase. Based on your energy signature, your core numbers suggest a Life Path focused on spiritual service and healing others. Your current personal year cycle emphasizes the importance of trusting your intuition and developing your natural psychic abilities.`}
+Score: ${scores.numerology}/100
 
 ETERNAL ARCHETYPE PROFILE
-You embody the Mystic Healer archetype - a rare combination of spiritual wisdom and healing abilities. This archetype represents someone who bridges the physical and spiritual worlds, often serving as a guide for others' spiritual awakening. Your energy signature shows strong empathic abilities and natural channeling gifts that allow you to access higher dimensional guidance.
-Score: 85/100
+You embody the ${selectedArchetype} archetype - a rare spiritual configuration representing ${seedNum % 3 === 0 ? 'ancient wisdom keepers who bridge multiple dimensions' : seedNum % 3 === 1 ? 'evolutionary catalysts who help others awaken to their true purpose' : 'master healers who transform pain into wisdom'}. ${isSpirituallyActive ? 'Your consistent spiritual practices have activated dormant DNA codes, allowing you to access higher dimensional frequencies' : 'Your natural spiritual gifts are awakening, even without formal practices, indicating a soul contract to serve as a spiritual guide'}. Your shadow aspect involves ${isStressed ? 'tendency to absorb others\' negative emotions, requiring stronger energetic boundaries' : 'perfectionism that can block the flow of divine inspiration'}.
+Score: ${scores.archetype}/100
 
 VIBRATIONAL FREQUENCY DASHBOARD
-Your current vibrational frequency resonates at approximately 528Hz, known as the "Love Frequency" or "Miracle Tone." This indicates you are in a state of heart-centered alignment with strong healing capabilities. Your energy patterns show optimal morning vitality between 6-9 AM with natural contemplative periods in the evening that support spiritual growth and integration.
-Score: 78/100
+Your current vibrational frequency resonates at ${selectedFrequency}, known as the "${selectedFrequency === '528Hz' ? 'Love Frequency' : selectedFrequency === '432Hz' ? 'Nature\'s Frequency' : selectedFrequency === '741Hz' ? 'Awakening Frequency' : selectedFrequency === '852Hz' ? 'Third Eye Frequency' : 'Divine Connection Frequency'}." ${isStressed ? 'Recent stress patterns have created minor frequency fluctuations between 3-7 AM, but your natural resonance quickly restores balance' : 'Your frequency remains remarkably stable, with peak energy occurring during early morning hours and evening twilight'}. Your energy geometric pattern forms ${seedNum % 3 === 0 ? 'sacred spirals' : seedNum % 3 === 1 ? 'crystalline triangles' : 'infinity mandalas'}, indicating ${seedNum % 3 === 0 ? 'evolutionary consciousness' : seedNum % 3 === 1 ? 'manifestation abilities' : 'soul integration mastery'}.
+Score: ${scores.vibrational}/100
 
 AURA AND CHAKRA HEALTH
-Your aura displays a beautiful emerald green base color indicating powerful heart chakra activation and healing abilities, with violet crown chakra energy showing strong spiritual connection. Minor blockages appear in the throat chakra around self-expression and speaking your truth. Your solar plexus shows balanced personal power with room for increased confidence in your spiritual gifts.
-Score: 82/100
+Your dominant aura color is ${selectedAuraColor}, indicating ${selectedAuraColor.includes('crimson') ? 'passionate life force and leadership abilities' : selectedAuraColor.includes('turquoise') ? 'healing gifts and clear communication' : selectedAuraColor.includes('amber') ? 'wisdom keeping and ancient knowledge access' : selectedAuraColor.includes('violet') ? 'psychic abilities and spiritual mastery' : selectedAuraColor.includes('emerald') ? 'heart-centered healing and unconditional love' : 'pure divine connection and angelic communication'}. Your ${isStressed ? 'throat chakra shows mild constriction from recent stress, while your' : 'chakra system displays excellent'} crown chakra radiates brilliant ${selectedAuraColor.split(' ')[1]} light. ${hasRelationshipConcerns ? 'Your heart chakra requires cleansing with rose quartz and rhodochrosite' : `Your ${selectedCrystal} resonates perfectly with your energy field`}. Specific healing: apply ${selectedCrystal} to your solar plexus for 15 minutes daily.
+Score: ${scores.aura}/100
 
 RELATIONSHIP RESONANCE MAP
-You naturally attract soul-level connections and often serve as an energetic anchor and healer in relationships. Your empathic nature creates deep bonds but requires conscious boundary setting to prevent energy depletion. You have strong compatibility with earth and water sign energies and benefit from relationships that support your spiritual growth and healing work.
-Score: 75/100
+${hasRelationshipConcerns ? 
+  'Your empathic nature creates deep soul connections but requires conscious boundary setting to prevent energy depletion. You naturally attract wounded souls seeking healing, which aligns with your spiritual purpose but can be energetically taxing. Your love language combines physical touch with words of affirmation, and you thrive in relationships that support mutual spiritual growth.' :
+  'You demonstrate exceptional relationship wisdom, naturally attracting high-vibrational connections that support your spiritual evolution. Your energy signature indicates secure attachment patterns with strong intuitive abilities to discern authentic connections. You serve as an energetic anchor in relationships, providing stability and unconditional love.'} Your relationship archetype is the ${seedNum % 2 === 0 ? 'Sacred Mirror' : 'Divine Catalyst'}, ${seedNum % 2 === 0 ? 'reflecting others\' highest potential' : 'inspiring others\' spiritual awakening'}.
+Score: ${scores.relationship}/100
 
 MENTAL EMOTIONAL HEALTH
-You possess highly developed emotional intelligence and intuitive sensitivity that serves your spiritual path well. Tendency toward overthinking and absorbing others' emotional states requires daily energetic clearing practices. Your mental clarity peaks during morning meditation and benefits from regular grounding activities in nature.
-Score: 73/100
+${isStressed ? 
+  'Your highly sensitive nervous system processes emotional and energetic information at accelerated rates, sometimes creating overwhelm. Your stress patterns indicate you absorb environmental energies unconsciously, requiring daily protection rituals. Practice the 4-7-8 breathing technique three times daily and visualize a protective violet flame around your aura.' :
+  'You demonstrate remarkable emotional intelligence and energetic sovereignty. Your mental clarity remains stable even during challenging circumstances, indicating strong spiritual resilience. Your emotional patterns show healthy processing and integration of life experiences.'} Your empathic gifts score ${85 + (seedNum % 10)} out of 100, placing you in the highly sensitive person category. Recommended practice: daily grounding meditation for 12 minutes at sunrise.
+Score: ${scores.mental}/100
 
 SPIRITUAL ALIGNMENT SCORE
-Excellent alignment with your spiritual purpose and higher self connection. Your dedication to spiritual practices shows consistent growth and evolution. Strong ability to receive divine guidance through meditation, dreams, and intuitive insights. Continue developing your natural psychic abilities through regular practice and trust in your inner wisdom.
-Score: 91/100
+${isSpirituallyActive ? 
+  'Excellent alignment with your soul\'s purpose and higher self connection. Your dedication to spiritual practices has activated your light body and opened direct communication channels with your spirit guides. You\'re currently in an acceleration phase of spiritual development, with new psychic abilities emerging.' :
+  'Strong natural spiritual connection despite limited formal practices, indicating an old soul with innate wisdom. Your intuitive abilities are highly developed, and you\'re being called to establish more consistent spiritual practices to fully anchor your gifts.'} Your spiritual DNA shows activation of ${3 + (seedNum % 4)} out of 12 strands, with rapid evolution occurring. You have a direct connection to ${seedNum % 3 === 0 ? 'Archangel Michael' : seedNum % 3 === 1 ? 'Ascended Master Buddha' : 'Divine Mother Mary'}.
+Score: ${scores.spiritual}/100
 
 PALM READINGS
 ${palmImageUploaded ? 
-  `Your palm reveals a strong, clear life line indicating excellent vitality and longevity extending well into your 80s. The deep heart line shows your capacity for profound emotional connections and healing love. Your head line demonstrates perfect balance between analytical thinking and intuitive wisdom. The Mount of Apollo is well-developed, indicating creative gifts and spiritual leadership abilities that are ready to be fully expressed in the world.
-Score: 84/100` :
-  `Palm reading analysis requires an uploaded palm image to provide detailed insights. Your palm lines would reveal information about your life path, health patterns, relationship tendencies, and creative potential. Please upload a clear photo of your correct hand (right for males, left for females) to unlock this powerful aspect of your spiritual analysis.
-Score: 0/100`}
+  `Your palm reveals extraordinary spiritual markings: a ${seedNum % 2 === 0 ? '72mm' : '68mm'} life line with ${seedNum % 3 + 1} healing crosses, indicating natural healing abilities activated at age ${25 + (seedNum % 15)}. Your heart line curves dramatically toward Jupiter finger, showing your capacity for unconditional love and spiritual leadership. The head line displays a ${seedNum % 2 === 0 ? 'writer\'s fork' : 'mystic cross'}, confirming your gifts in ${seedNum % 2 === 0 ? 'spiritual communication and teaching' : 'psychic abilities and divination'}. Your Mount of Apollo shows a rare star formation, indicating fame or recognition in spiritual/healing work arriving between ages ${40 + (seedNum % 10)}-${50 + (seedNum % 8)}.
+Score: ${scores.palm}/100` :
+  `Detailed palm reading requires uploaded palm image to reveal your complete destiny map. Your palm would show specific timing for major life events: relationship milestones, career breakthroughs, health challenges, and spiritual awakening periods. The traditional palmistry practice uses your ${responseText.includes('male') && !responseText.includes('female') ? 'right' : responseText.includes('female') ? 'left' : 'dominant'} hand to read active karma and future potentials, while the opposite hand reveals your soul's original blueprint.
+Score: ${scores.palm}/100`}
 
 HEALTH INSIGHTS
-Your overall constitution shows strong spiritual sensitivity that requires conscious energy management and protection practices. Focus on grounding techniques, adequate hydration, and regular movement to maintain optimal energetic balance. Consider incorporating adaptogenic herbs, crystal healing, and sound therapy to support your highly sensitive nervous system and enhance your natural healing abilities.
-Score: 79/100`;
+${responseText.includes('sleep') ? 
+  'Your sleep patterns directly impact your psychic abilities and energy field strength. Optimal bedtime for your constitution is 10:15 PM, with awakening between 5:45-6:30 AM to align with your natural circadian rhythm.' : 
+  'Your energy system requires specific timing for optimal function.'} Based on your responses, implement these precise protocols: consume 2.1 liters of structured water daily (add pinch of sea salt), walk exactly 7,800 steps daily, and practice breathwork at 6 AM and 6 PM for 8 minutes each session. ${isStressed ? 'Your adrenals require ashwagandha root (600mg) and magnesium glycinate (400mg) before bed' : 'Maintain your excellent health with rhodiola rosea (300mg) for sustained energy'}. Your body temple resonates with ${selectedCrystal} placed on your heart center during rest periods.
+Score: ${scores.health}/100`;
 };
 
 /**
