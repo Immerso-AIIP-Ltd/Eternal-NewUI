@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import circle from './circle.png';
 import { useNavigate } from 'react-router-dom'; 
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider,getAuth } from 'firebase/auth';
 import Google from './Google.png';
 import { auth,db } from './firebase/config';
 import { getDoc, doc } from "firebase/firestore";
@@ -84,15 +84,38 @@ const handleLogin = async (e) => {
 
 
 
-  const handleGoogleSignIn = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-      navigate('/home');
-    } catch (err) {
-      console.error('Google login error:', err.message);
+const handleGoogleSignIn = async () => {
+  const provider = new GoogleAuthProvider();
+
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+
+    if (!user) throw new Error('No user info received from Google');
+
+   
+
+    // First check localStorage for cached report
+    const localReport = localStorage.getItem('eternalWellnessReport');
+    if (localReport) {
+      navigate('/report');
+      return;
     }
-  };
+
+    // Then fall back to Firestore
+    const reportDocRef = doc(db, 'userResults', user.uid);
+    const reportDocSnap = await getDoc(reportDocRef);
+
+    if (reportDocSnap.exists()) {
+      navigate('/report');
+    } else {
+      navigate('/home');
+    }
+
+  } catch (err) {
+    console.error('Google login error:', err.message);
+    setError('Failed to sign in with Google. Please try again.');
+  }}
 
   return (
     <div
