@@ -88,8 +88,7 @@ If the answer is missing, unclear, or in the wrong format, **ask the user again*
 
 🌿 RELATIONSHIPS & ENERGETICS
 17. Do you feel supported by the people in your life?
-18. Are there any relationships that drain your energy?
-19. Do you feel connected to your life's purpose?
+18. Do you feel connected to your life's purpose?
 
 ---
 

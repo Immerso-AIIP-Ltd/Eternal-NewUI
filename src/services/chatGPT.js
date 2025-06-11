@@ -210,7 +210,7 @@ USER RESPONSES: ${userResponses.join(' || ')}
 Generate EXACTLY these 9 sections with highly varied and specific content:
 
 NUMEROLOGY WITH DATE OF BIRTH
-[Extract the date of birth and Calculate specific numeralogy numnber (adding the numbers). Life Path Number, Expression Number, Soul Urge Number. Include challenging years, current numerological cycle. Mention specific numerological influences for this year.]
+[Extract the date of birth and Calculate specific numeralogy numnber (adding the date of bith numbers) and give the Life Path Number. Include challenging years, current numerological cycle. Mention specific numerological influences for this year.]
 Score: [Generate varied score 35-95]/100
 
 ETERNAL ARCHETYPE PROFILE  
